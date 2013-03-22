@@ -31,9 +31,9 @@ RESOURCES_MANIFEST_EXTERNAL = {
 
 cloudBox = () ->
    ############################################### INIT ###############################################
-   express = require('express')
-   http = require('http')
-   fs = require('fs')
+   express = require 'express'
+   http = require 'http'
+   fs = require 'fs'
 
    PORT = process.env.PORT || 5000
    USE_SSL = undefined
@@ -107,7 +107,7 @@ cloudBox = () ->
                error400(request, response)
 
    ############################################### LAUNCH ###############################################
-
+   
    server.listen PORT, () ->
       console.log("GBCloudBox Server: Listening on port " + PORT + "!")
 
