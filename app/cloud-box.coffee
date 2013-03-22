@@ -43,13 +43,11 @@ cloudBox = () ->
 
    ############################################### CONFIG ###############################################
 
-   app.configure('development', () -> 
+   app.configure 'development', () -> 
       USE_SSL = no
-   )
 
-   app.configure('production', () ->
+   app.configure 'production', () ->
       USE_SSL = yes
-   )
 
    ############################################### HELPERS ###############################################
 
@@ -57,63 +55,61 @@ cloudBox = () ->
       response.statusCode = 404
       response.end()
 
-   latestVersionForLocalResource = (resource) ->
+   latestVersionForLocalResource = (resource, callback) ->
       local_path = "res/#{resource}"
 
-      if fs.existsSync(local_path)#foo
-         fs.readdirSync(local_path).reduce (a,b) -> Math.max a, b
-      else
-         null
+      fs.exists local_path, (exists) -> 
+         if exists
+            fs.readdir local_path, (err, files) ->
+               callback files.reduce (a,b) -> Math.max a, b
+         else
+            null
 
    publicPathForLocalResource = (request, resource) ->
       protocol = if USE_SSL then "https" else "http"
       "#{protocol}://#{request.headers.host}/#{RESOURCES_DATA_PATH}/#{resource}"
 
-   localPathForLocalResource = (resource) ->
-      "res/#{resource}/#{latestVersionForLocalResource(resource)}"
+   localPathForLocalResource = (resource, callback) ->
+      latestVersionForLocalResource resource, (latestVersion) -> 
+         callback "res/#{resource}/#{latestVersion}"
 
    ############################################### META ROUTE ###############################################
 
-   app.get("/#{RESOURCES_META_PATH}/:resource_identifier", (request, response) ->
+   app.get "/#{RESOURCES_META_PATH}/:resource_identifier", (request, response) ->
       identifier = request.params.resource_identifier
 
       #if its a local resource, get the public path. if its an external resource the path is already set
       if identifier in RESOURCES_MANIFEST_LOCAL
-         response.setHeader 'Content-Type', 'application/json'
+         latestVersionForLocalResource identifier, (latestVersion) -> 
+            response.setHeader 'Content-Type', 'application/json'
 
-         response.end(JSON.stringify({
-            "v" : latestVersionForLocalResource(identifier),
-            "url" : publicPathForLocalResource(request, identifier)
-         }))
+            response.end(JSON.stringify({
+               "v" : latestVersion,
+               "url" : publicPathForLocalResource(request, identifier)
+            }))
       else if resource = RESOURCES_MANIFEST_EXTERNAL[identifier]
          response.end(JSON.stringify(resource))
       else
          error400(request, response)
-   )
 
    ############################################### DATA ROUTE ###############################################
 
-
-   app.get("/#{RESOURCES_DATA_PATH}/:resource_identifier", (request, response) ->
+   app.get "/#{RESOURCES_DATA_PATH}/:resource_identifier", (request, response) ->
       identifier = request.params.resource_identifier
 
       #get path
-      path = localPathForLocalResource(identifier)
-
-      #make sure file exists
-      fs.exists(path, (exists) ->
-         if exists
-            response.sendFile(path)
-         else
-            error400(request, response)
-      )
-   )
+      localPathForLocalResource identifier, (path) ->
+         #make sure file exists
+         fs.exists path, (exists) ->
+            if exists
+               response.sendfile(path)
+            else
+               error400(request, response)
 
    ############################################### LAUNCH ###############################################
 
-   server.listen(PORT, () ->
+   server.listen PORT, () ->
       console.log("GBCloudBox Server: Listening on port " + PORT + "!")
-   )
 
 # Export server as start function which when called starts the server
 exports.start = cloudBox
