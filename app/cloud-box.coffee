@@ -107,7 +107,7 @@ cloudBox = () ->
                error400(request, response)
 
    ############################################### LAUNCH ###############################################
-   
+
    server.listen PORT, () ->
       console.log("GBCloudBox Server: Listening on port " + PORT + "!")
 
