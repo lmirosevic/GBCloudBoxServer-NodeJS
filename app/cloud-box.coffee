@@ -17,43 +17,104 @@
 # limitations under the License.
 
 
-# Options
+############################################### MANIFEST ###############################################
+
 RESOURCES_META_PATH = "GBCloudBoxResourcesMeta"
 RESOURCES_DATA_PATH = "GBCloudBoxResourcesData"
 
 RESOURCES_MANIFEST_LOCAL = [
    "Facebook.js",
 ]
-RESOURCES_MANIFEST_EXTERNAL = [
-    # "Facebook.js" : {"v" : "3", "url" : "https://www.goonbee.com/some/path/Facebook.js"},
-]
+RESOURCES_MANIFEST_EXTERNAL = {
+    # "Facebook2.js" : {"v" : "3", "url" : "https://www.goonbee.com/some/path/Facebook.js"},
+}
 
 cloudBox = () ->
-   # Init
+   ############################################### INIT ###############################################
    express = require('express')
-   port = process.env.PORT || 5000
+   http = require('http');
+   fs = require('fs')
+
+   PORT = process.env.PORT || 5000
+   USE_SSL = no
+
    app = express()
+   server = http.createServer(app);
 
-   # Helpers
-   Error400 = (request, response) ->
+   ############################################### CONFIG ###############################################
+
+   app.configure('development', () -> 
+      USE_SSL = no
+      console.log("xxx dev")
+   )
+
+   app.configure('production', () ->
+      USE_SSL = yes
+      console.log("xxx prod")
+   )
+
+   ############################################### HELPERS ###############################################
+
+   error400 = (request, response) ->
       response.statusCode = 404
-      response.end "bad shit happened"
+      response.end()
 
-   # Meta Route
+   latestVersionForLocalResource = (resource) ->
+      local_path = "res/#{resource}"
+
+      if fs.existsSync(local_path)#foo
+         fs.readdirSync(local_path).reduce (a,b) -> Math.max a, b
+      else
+         null
+
+   publicPathForLocalResource = (request, resource) ->
+      protocol = if USE_SSL then "https" else "http"
+      "#{protocol}://#{request.headers.host}/#{RESOURCES_DATA_PATH}/#{resource}"
+
+   localPathForLocalResource = (resource) ->
+      "res/#{resource}/#{latestVersionForLocalResource(resource)}"
+
+   ############################################### META ROUTE ###############################################
+
    app.get("/#{RESOURCES_META_PATH}/:resource_identifier", (request, response) ->
       identifier = request.params.resource_identifier
 
-      response.setHeader 'Content-Type', 'text/plain'
-      response.end "hi res: #{identifier}"
+      #if its a local resource, get the public path. if its an external resource the path is already set
+      if identifier in RESOURCES_MANIFEST_LOCAL
+         response.setHeader 'Content-Type', 'application/json'
+
+         response.end(JSON.stringify({
+            "v" : latestVersionForLocalResource(identifier),
+            "url" : publicPathForLocalResource(request, identifier)
+         }))
+      else if resource = RESOURCES_MANIFEST_EXTERNAL[identifier]
+         response.end(JSON.stringify(resource))
+      else
+         error400(request, response)
    )
 
-    # app.get("/bad", function (request, response) {
-    #    Error400(request, response)
-    # })
+   ############################################### DATA ROUTE ###############################################
 
-   # Launch
-   app.listen(port, () ->
-      console.log("GBCloudBox Server: Listening on port " + port + "!")
+
+   app.get("/#{RESOURCES_DATA_PATH}/:resource_identifier", (request, response) ->
+      identifier = request.params.resource_identifier
+
+      #get path
+      path = localPathForLocalResource(identifier)
+
+      #make sure file exists
+      fs.exists(path, (exists) ->
+         if exists
+            response.sendFile(path)
+         else
+            error400(request, response)
+      )
+   )
+
+   ############################################### LAUNCH ###############################################
+
+   server.listen(PORT, () ->
+      console.log("GBCloudBox Server: Listening on port " + PORT + "!")
    )
 
 # Export server as start function which when called starts the server
