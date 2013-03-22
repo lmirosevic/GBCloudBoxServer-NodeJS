@@ -32,26 +32,25 @@ RESOURCES_MANIFEST_EXTERNAL = {
 cloudBox = () ->
    ############################################### INIT ###############################################
    express = require('express')
-   http = require('http');
-   fs = require('fs')
 
    PORT = process.env.PORT || 5000
-   USE_SSL = no
+   USE_SSL = undefined
 
    app = express()
-   server = http.createServer(app);
-
-   ############################################### CONFIG ###############################################
 
    app.configure('development', () -> 
       USE_SSL = no
-      console.log("xxx dev")
    )
 
    app.configure('production', () ->
       USE_SSL = yes
-      console.log("xxx prod")
    )
+
+   console.log USE_SSL
+   http_s = if USE_SSL then require('https') else require('http')
+   server = http_s.createServer(app);
+
+   fs = require('fs')
 
    ############################################### HELPERS ###############################################
 
