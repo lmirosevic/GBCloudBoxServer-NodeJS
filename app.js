@@ -1,9 +1,3 @@
-//Nodefly
-require('nodefly').profile(
-    process.env.NODEFLY_APPLICATION_KEY,
-    [process.env.APPLICATION_NAME,'Heroku']
-);
-
 // Cluster bootstrap
 var cluster = require('cluster');
 var numCPUs = require('os').cpus().length;
@@ -21,7 +15,7 @@ if (cluster.isMaster) {
 } 
 else {
 	// Worker starts a server
-	require('coffee-script')
+	require('coffee-script');
 	var cloudBox = require('./app/cloud-box.coffee');
 
 	cloudBox.start();

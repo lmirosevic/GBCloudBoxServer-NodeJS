@@ -6,8 +6,7 @@
 	"private": true,
 	"dependencies": {
 		"express": "3.0.x",
-		"coffee-script": "*",
-		"nodefly": "stable"
+		"coffee-script": "*"
 	},
 	"engines": {
 		"node": "0.8.x",
